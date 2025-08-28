@@ -61,8 +61,10 @@ pub async fn fetch_player<T: DatabaseState>(state: &T, id: u64) -> ServiceResult
 pub async fn fetch_player_matches<T: DatabaseState>(
     state: &T,
     id: u64,
+    page: u32,
+    limit: u32,
 ) -> ServiceResult<Vec<MatchExtended>> {
-    let mut existing_matches = match matches::fetch_extended_matches(state, id).await {
+    let mut existing_matches = match matches::fetch_extended_matches(state, id, page, limit).await {
         Ok(matches) => matches,
         Err(sqlx::Error::RowNotFound) => return Err(AppError::PlayerMatchesNotFound),
         Err(e) => return unexpected(e),

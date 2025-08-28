@@ -37,6 +37,8 @@ pub async fn create<T: DatabaseState>(
 pub async fn fetch_extended_matches<T: DatabaseState>(
     state: &T,
     id: u64,
+    page: u32,
+    limit: u32,
 ) -> sqlx::Result<Vec<MatchExtended>> {
     const QUERY: &str = const_str::concat!(
         "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.rating_after_match, md.rating_delta ",
@@ -45,11 +47,15 @@ pub async fn fetch_extended_matches<T: DatabaseState>(
         "` m ",
         "JOIN match_detail md ON m.id = md.match_id ",
         "WHERE md.player_id = ? ",
-        "ORDER BY m.id DESC"
+        "ORDER BY m.id DESC LIMIT ? OFFSET ?"
     );
+    let limit = std::cmp::min(limit, 50);
+    let offset = (page - 1) * limit;
 
     sqlx::query_as::<_, MatchExtended>(QUERY)
         .bind(id)
+        .bind(limit)
+        .bind(offset)
         .fetch_all(state.db())
         .await
 }

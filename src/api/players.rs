@@ -37,8 +37,13 @@ async fn fetch_leaderboard(
 async fn fetch_player_matches(
     state: Data<State>,
     path: web::Path<u64>,
+    query: Query<RequestQuery>,
 ) -> ServiceResponse<Vec<MatchExtended>> {
-    let player_matches = players::fetch_player_matches(&state, path.into_inner()).await?;
+    let page = query.page.unwrap_or(1);
+    let limit = query.limit.unwrap_or(10);
+
+    let player_matches =
+        players::fetch_player_matches(&state, path.into_inner(), page, limit).await?;
     Ok(Json(player_matches))
 }
 
