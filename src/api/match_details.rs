@@ -1,10 +1,13 @@
 use actix_web::{
-    HttpResponse, Responder, post,
+    post,
     web::{self, Data, Json},
 };
 use serde::Deserialize;
 
-use crate::{common::state::AppState, repositories::match_details, usecases};
+use crate::{
+    common::{error::ServiceResponse, state::State},
+    usecases,
+};
 
 #[derive(Deserialize, Clone)]
 pub struct RequestBody {
@@ -20,47 +23,13 @@ pub struct RequestBody {
 
 #[post("/")]
 async fn create_match_details(
-    state: Data<AppState>,
+    state: Data<State>,
     details: Json<Vec<RequestBody>>,
-) -> impl Responder {
-    match usecases::match_details::validate_teams(&details) {
-        Ok(_) => (),
-        Err(e) => {
-            return HttpResponse::BadRequest()
-                .content_type("text/plain")
-                .body(format!("{}", e));
-        }
-    }
+) -> ServiceResponse<String> {
+    usecases::match_details::create_match_details(&state, Json(details.clone())).await?;
+    usecases::match_details::process_match(&state, details[0].match_id).await?;
 
-    for detail in details.iter() {
-        match match_details::create(
-            &state,
-            detail.steam_id.to_string(),
-            detail.match_id,
-            detail.frags,
-            detail.deaths,
-            detail.average_ping,
-            detail.damage_dealt,
-            detail.damage_taken,
-            detail.model.to_string(),
-            0.0,
-            0.0,
-        )
-        .await
-        {
-            Ok(_) => continue,
-            Err(e) => {
-                return HttpResponse::InternalServerError()
-                    .json(format!("Failed to create match details: {}", e));
-            }
-        };
-    }
-
-    if let Err(e) = usecases::match_details::process_match(&state, details[0].match_id).await {
-        return HttpResponse::InternalServerError().json(format!("Failed to process match: {}", e));
-    }
-
-    HttpResponse::Created().json("Match details created successfully")
+    Ok(Json("Match details created successfully".to_string()))
 }
 
 pub fn router(conf: &mut web::ServiceConfig) {

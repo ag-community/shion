@@ -1,3 +1,5 @@
+use tracing::Level;
+
 use crate::common::env::FromEnv;
 use std::env;
 use std::ops::Deref;
@@ -7,6 +9,8 @@ use std::time::Duration;
 pub struct AppSettings {
     pub app_component: String,
     pub app_port: u16,
+
+    pub log_level: Level,
 
     pub database_url: String,
     pub database_wait_timeout: Duration,
@@ -22,6 +26,8 @@ impl AppSettings {
         let app_component = env::var("APP_COMPONENT")?;
         let app_port = u16::from_env("APP_PORT")?;
 
+        let log_level = Level::from_env("LOG_LEVEL")?;
+
         let database_url = env::var("DATABASE_URL")?;
         let database_wait_timeout_secs = u64::from_env("DATABASE_WAIT_TIMEOUT_SECS")?;
         let database_wait_timeout = Duration::from_secs(database_wait_timeout_secs);
@@ -32,6 +38,8 @@ impl AppSettings {
         Ok(AppSettings {
             app_component,
             app_port,
+
+            log_level,
 
             database_url,
             database_wait_timeout,

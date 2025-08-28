@@ -6,43 +6,23 @@ use skillratings::{
 
 use crate::{
     api::match_details::RequestBody,
-    common::state::DbConnection,
-    models::match_details::MatchDetail,
+    common::{
+        error::{AppError, ServiceResult},
+        state::DatabaseState,
+    },
+    entities::match_details::MatchDetail,
     repositories::{
         match_details,
-        players::{self, PlayerId, PlayerIds},
+        players::{self},
     },
 };
-
-#[derive(Debug)]
-pub enum TeamValidationError {
-    InvalidModel(String),
-    UnevenTeams(usize, usize),
-}
 
 pub struct PlayerRating {
     rating: WengLinRating,
     detail: MatchDetail,
 }
 
-impl std::fmt::Display for TeamValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::InvalidModel(model) => write!(
-                f,
-                "Invalid model value: '{}'. Valid values are 'blue' or 'red'",
-                model
-            ),
-            Self::UnevenTeams(blue, red) => write!(
-                f,
-                "Team sizes do not match: blue team size = {}, red team size = {}",
-                blue, red
-            ),
-        }
-    }
-}
-
-pub fn validate_teams(details: &Json<Vec<RequestBody>>) -> Result<(), TeamValidationError> {
+pub fn validate_teams(details: &Json<Vec<RequestBody>>) -> ServiceResult<()> {
     let mut blue_team_size = 0;
     let mut red_team_size = 0;
 
@@ -50,15 +30,12 @@ pub fn validate_teams(details: &Json<Vec<RequestBody>>) -> Result<(), TeamValida
         match detail.model.to_lowercase().as_str() {
             "blue" => blue_team_size += 1,
             "red" => red_team_size += 1,
-            _ => return Err(TeamValidationError::InvalidModel(detail.model.to_string())),
+            _ => return Err(AppError::InvalidModel),
         }
     }
 
     if blue_team_size != red_team_size {
-        return Err(TeamValidationError::UnevenTeams(
-            blue_team_size,
-            red_team_size,
-        ));
+        return Err(AppError::UnevenTeams);
     }
 
     Ok(())
@@ -75,17 +52,47 @@ pub fn determine_winner(blue_stats: &Vec<i16>, red_stats: &Vec<i16>) -> Outcomes
     }
 }
 
-pub async fn process_match<T: DbConnection>(
+pub async fn create_match_details<T: DatabaseState>(
     state: &T,
-    match_id: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
+    details: Json<Vec<RequestBody>>,
+) -> ServiceResult<()> {
+    let _ = validate_teams(&details);
+
+    for detail in details.iter() {
+        match_details::create(
+            state,
+            detail.steam_id.to_string(),
+            detail.match_id,
+            detail.frags,
+            detail.deaths,
+            detail.average_ping,
+            detail.damage_dealt,
+            detail.damage_taken,
+            detail.model.to_string(),
+            0.0,
+            0.0,
+        )
+        .await?;
+    }
+    Ok(())
+}
+
+pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> ServiceResult<()> {
     let match_details = match_details::fetch_match_details(state, match_id).await?;
+
+    if match_details.is_empty() {
+        tracing::warn!(
+            "No match details found for match ID: {}, skipping processing.",
+            match_id
+        );
+        return Ok(());
+    }
 
     let player_ids: Vec<u64> = match_details
         .iter()
         .map(|detail| detail.player_id)
         .collect();
-    let players = players::fetch_many(state, PlayerIds::Ids(player_ids)).await?;
+    let players = players::fetch_many_by_steamids(state, player_ids).await?;
 
     let mut player_ratings: Vec<PlayerRating> = Vec::new();
 
@@ -157,28 +164,15 @@ pub async fn process_match<T: DbConnection>(
             0.0,
         ));
 
-        match players::update_player_rating(
+        players::update_player_rating(
             state,
-            PlayerId::Id(detail.player_id),
+            detail.player_id,
             new_rating.rating,
             new_rating.uncertainty,
         )
-        .await
-        {
-            Ok(_) => (),
-            Err(e) => {
-                return Err(anyhow::anyhow!("Failed to update player ratings: {}", e).into());
-            }
-        }
+        .await?;
 
-        match match_details::update_ratings(state, detail.id, new_rating.rating, *rating_delta)
-            .await
-        {
-            Ok(_) => (),
-            Err(e) => {
-                return Err(anyhow::anyhow!("Failed to update match details: {}", e).into());
-            }
-        }
+        match_details::update_ratings(state, detail.id, new_rating.rating, *rating_delta).await?;
     }
 
     Ok(())

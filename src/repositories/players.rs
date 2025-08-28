@@ -1,174 +1,133 @@
-use anyhow::Ok;
+use crate::{common::state::DatabaseState, entities::players::Player};
 
-use crate::{common::state::DbConnection, models::players::Player};
+const TABLE_NAME: &str = "player";
 
-pub enum PlayerId {
-    SteamId(String),
-    Id(u64),
-}
-
-pub enum PlayerIds {
-    SteamIds(Vec<String>),
-    Ids(Vec<u64>),
-}
-
-pub async fn create<T: DbConnection>(
+pub async fn create<T: DatabaseState>(
     state: &T,
     steam_id: String,
     steam_name: String,
     steam_avatar_url: String,
-) -> anyhow::Result<Player> {
-    let player = sqlx::query_as::<_, Player>(
-        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM player WHERE steam_id = ?",
-    )
-    .bind(&steam_id)
-    .fetch_optional(state.get_connection())
-    .await?;
+) -> sqlx::Result<Player> {
+    const INSERT_QUERY: &str = const_str::concat!(
+        "INSERT INTO `",
+        TABLE_NAME,
+        "` (steam_id, steam_name, steam_avatar_url) VALUES (?, ?, ?)"
+    );
+    const SELECT_QUERY: &str = const_str::concat!(
+        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM `",
+        TABLE_NAME,
+        "` WHERE id = ?"
+    );
 
-    if let Some(existing_player) = player {
-        return Ok(existing_player);
-    }
+    let player_id = sqlx::query(INSERT_QUERY)
+        .bind(&steam_id)
+        .bind(&steam_name)
+        .bind(&steam_avatar_url)
+        .execute(state.db())
+        .await?
+        .last_insert_id();
 
-    let player_id = sqlx::query(
-        "INSERT INTO `player` (steam_id, steam_name, steam_avatar_url) VALUES (?, ?, ?)",
-    )
-    .bind(&steam_id)
-    .bind(&steam_name)
-    .bind(&steam_avatar_url)
-    .execute(state.get_connection())
-    .await?
-    .last_insert_id();
-
-    let new_player = sqlx::query_as::<_, Player>(
-        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM player WHERE id = ?",
-    )
-    .bind(player_id)
-    .fetch_one(state.get_connection())
-    .await?;
-
-    Ok(new_player)
+    sqlx::query_as::<_, Player>(SELECT_QUERY)
+        .bind(player_id)
+        .fetch_one(state.db())
+        .await
 }
 
-pub async fn fetch_one<T: DbConnection>(state: &T, id: PlayerId) -> anyhow::Result<Player> {
-    match id {
-        PlayerId::Id(player_id) => {
-            let player = sqlx::query_as::<_, Player>(
-                "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM player WHERE id = ?",
-            )
-            .bind(player_id)
-            .fetch_one(state.get_connection())
-            .await?;
+pub async fn fetch_one_by_id<T: DatabaseState>(state: &T, id: u64) -> sqlx::Result<Player> {
+    const QUERY: &str = const_str::concat!(
+        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM `",
+        TABLE_NAME,
+        "` WHERE id = ?"
+    );
 
-            Ok(player)
-        }
-        PlayerId::SteamId(steam_id) => {
-            let player = sqlx::query_as::<_, Player>(
-                "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM player WHERE steam_id = ?",
-            )
-            .bind(steam_id)
-            .fetch_one(state.get_connection())
-            .await?;
-
-            Ok(player)
-        }
-    }
+    sqlx::query_as::<_, Player>(QUERY)
+        .bind(id)
+        .fetch_one(state.db())
+        .await
 }
 
-pub async fn fetch_many<T: DbConnection>(state: &T, ids: PlayerIds) -> anyhow::Result<Vec<Player>> {
-    match ids {
-        PlayerIds::SteamIds(steam_ids) => {
-            if steam_ids.is_empty() {
-                return Ok(vec![]);
-            }
+pub async fn fetch_one_by_steamid<T: DatabaseState>(
+    state: &T,
+    steam_id: String,
+) -> sqlx::Result<Player> {
+    const QUERY: &str = const_str::concat!(
+        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM `",
+        TABLE_NAME,
+        "` WHERE steam_id = ?"
+    );
 
-            let placeholders = steam_ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
-            let query = format!(
-                "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM player WHERE steam_id IN ({})",
-                placeholders
-            );
-
-            let mut sql_query = sqlx::query_as::<_, Player>(&query);
-            for id in &steam_ids {
-                sql_query = sql_query.bind(id);
-            }
-
-            let players = sql_query.fetch_all(state.get_connection()).await?;
-
-            Ok(players)
-        }
-        PlayerIds::Ids(ids) => {
-            if ids.is_empty() {
-                return Ok(vec![]);
-            }
-
-            let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
-            let query = format!(
-                "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM player WHERE id IN ({})",
-                placeholders
-            );
-
-            let mut sql_query = sqlx::query_as::<_, Player>(&query);
-            for id in &ids {
-                sql_query = sql_query.bind(id);
-            }
-
-            let players = sql_query.fetch_all(state.get_connection()).await?;
-
-            Ok(players)
-        }
-    }
+    sqlx::query_as::<_, Player>(QUERY)
+        .bind(steam_id)
+        .fetch_one(state.db())
+        .await
 }
 
-pub async fn fetch_leaderboard<T: DbConnection>(
+pub async fn fetch_many_by_steamids<T: DatabaseState>(
+    state: &T,
+    ids: Vec<u64>,
+) -> sqlx::Result<Vec<Player>> {
+    let values = ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+    let query = format!(
+        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM {} WHERE id IN ({})",
+        TABLE_NAME, values
+    );
+
+    let mut sql_query = sqlx::query_as::<_, Player>(&query);
+    for id in &ids {
+        sql_query = sql_query.bind(id);
+    }
+
+    sql_query.fetch_all(state.db()).await
+}
+
+pub async fn fetch_leaderboard<T: DatabaseState>(
     state: &T,
     page: u32,
     limit: u32,
-) -> anyhow::Result<Vec<Player>> {
+) -> sqlx::Result<Vec<Player>> {
+    const QUERY: &str = const_str::concat!(
+        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM `",
+        TABLE_NAME,
+        "` ORDER BY rating DESC LIMIT ? OFFSET ?"
+    );
     let limit = std::cmp::min(limit, 50);
     let offset = (page - 1) * limit;
 
-    let players = sqlx::query_as::<_, Player>(
-        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM player ORDER BY rating DESC LIMIT ? OFFSET ?",
-    )
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(state.get_connection())
-    .await?;
-
-    Ok(players)
+    sqlx::query_as::<_, Player>(QUERY)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(state.db())
+        .await
 }
 
-pub async fn update_player_rating<T: DbConnection>(
+pub async fn update_player_rating<T: DatabaseState>(
     state: &T,
-    id: PlayerId,
+    id: u64,
     rating: f64,
     uncertainty: f64,
-) -> anyhow::Result<()> {
-    match id {
-        PlayerId::Id(player_id) => {
-            sqlx::query("UPDATE `player` SET rating = ?, uncertainty = ? WHERE id = ?")
-                .bind(rating)
-                .bind(uncertainty)
-                .bind(player_id)
-                .execute(state.get_connection())
-                .await?;
-            Ok(())
-        }
-        PlayerId::SteamId(steam_id) => {
-            sqlx::query("UPDATE `player` SET rating = ?, uncertainty = ? WHERE steam_id = ?")
-                .bind(rating)
-                .bind(uncertainty)
-                .bind(steam_id)
-                .execute(state.get_connection())
-                .await?;
-            Ok(())
-        }
-    }
+) -> sqlx::Result<()> {
+    const QUERY: &str = const_str::concat!(
+        "UPDATE `",
+        TABLE_NAME,
+        "` SET rating = ?, uncertainty = ? WHERE id = ?"
+    );
+
+    sqlx::query(QUERY)
+        .bind(rating)
+        .bind(uncertainty)
+        .bind(id)
+        .execute(state.db())
+        .await?;
+    Ok(())
 }
 
-pub async fn reset_all_player_ratings<T: DbConnection>(state: &T) -> anyhow::Result<()> {
-    sqlx::query("UPDATE `player` SET rating = 1000, uncertainty = 333.33333")
-        .execute(state.get_connection())
-        .await?;
+pub async fn reset_all_player_ratings<T: DatabaseState>(state: &T) -> sqlx::Result<()> {
+    const QUERY: &str = const_str::concat!(
+        "UPDATE `",
+        TABLE_NAME,
+        "` SET rating = 1000, uncertainty = 333.33333"
+    );
+
+    sqlx::query(QUERY).execute(state.db()).await?;
     Ok(())
 }

@@ -2,22 +2,22 @@ use actix_web::web::Data;
 use sqlx::{MySql, Pool};
 
 #[derive(Clone)]
-pub struct AppState {
+pub struct State {
     pub db: Pool<MySql>,
 }
 
-pub trait DbConnection {
-    fn get_connection(&self) -> &Pool<MySql>;
+pub trait DatabaseState {
+    fn db(&self) -> &Pool<MySql>;
 }
 
-impl DbConnection for AppState {
-    fn get_connection(&self) -> &Pool<MySql> {
+impl DatabaseState for State {
+    fn db(&self) -> &Pool<MySql> {
         &self.db
     }
 }
 
-impl DbConnection for Data<AppState> {
-    fn get_connection(&self) -> &Pool<MySql> {
+impl DatabaseState for Data<State> {
+    fn db(&self) -> &Pool<MySql> {
         &self.db
     }
 }

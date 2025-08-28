@@ -18,12 +18,6 @@ use crate::{api, lifecycle, settings::AppSettings};
 pub async fn serve(settings: &AppSettings) -> anyhow::Result<()> {
     let state = lifecycle::initialize_state(&settings).await?;
 
-    println!(
-        "Listening on {}:{}",
-        Ipv4Addr::UNSPECIFIED,
-        settings.app_port
-    );
-
     HttpServer::new(move || {
         let cors = Cors::default().allow_any_origin().send_wildcard();
 

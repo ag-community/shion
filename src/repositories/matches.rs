@@ -1,75 +1,82 @@
-use anyhow::Ok;
-
 use crate::{
-    common::state::DbConnection,
-    models::matches::{Match, MatchExtended},
+    common::state::DatabaseState,
+    entities::matches::{Match, MatchExtended},
 };
 
-pub enum PlayerId {
-    SteamId(String),
-    Id(u64),
-}
+const TABLE_NAME: &str = "match";
 
-pub async fn create<T: DbConnection>(
+pub async fn create<T: DatabaseState>(
     state: &T,
     server_ip: String,
     map_name: String,
-) -> anyhow::Result<Match> {
-    let match_id = sqlx::query("INSERT INTO `match` (server_ip, map_name) VALUES (?, ?)")
+) -> sqlx::Result<Match> {
+    const INSERT_QUERY: &str = const_str::concat!(
+        "INSERT INTO `",
+        TABLE_NAME,
+        "` (server_ip, map_name) VALUES (?, ?)"
+    );
+    const SELECT_QUERY: &str = const_str::concat!(
+        "SELECT id, server_ip, map_name FROM `",
+        TABLE_NAME,
+        "` WHERE id = ?"
+    );
+
+    let match_id = sqlx::query(INSERT_QUERY)
         .bind(server_ip)
         .bind(map_name)
-        .execute(state.get_connection())
+        .execute(state.db())
         .await?
         .last_insert_id();
 
-    let new_match =
-        sqlx::query_as::<_, Match>("SELECT id, server_ip, map_name FROM `match` WHERE id = ?")
-            .bind(match_id)
-            .fetch_one(state.get_connection())
-            .await?;
-
-    Ok(new_match)
+    sqlx::query_as::<_, Match>(SELECT_QUERY)
+        .bind(match_id)
+        .fetch_one(state.db())
+        .await
 }
 
-pub async fn fetch_extended_matches<T: DbConnection>(
+pub async fn fetch_extended_matches<T: DatabaseState>(
     state: &T,
     id: u64,
-) -> anyhow::Result<Vec<MatchExtended>> {
-    let matches = sqlx::query_as::<_, MatchExtended>(
-        "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.rating_after_match, md.rating_delta
-         FROM `match` m
-         JOIN match_detail md ON m.id = md.match_id
-         WHERE md.player_id = ?
-         ORDER BY m.id DESC",
-    )
-    .bind(id)
-    .fetch_all(state.get_connection())
-    .await?;
+) -> sqlx::Result<Vec<MatchExtended>> {
+    const QUERY: &str = const_str::concat!(
+        "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.rating_after_match, md.rating_delta ",
+        "FROM `",
+        TABLE_NAME,
+        "` m ",
+        "JOIN match_detail md ON m.id = md.match_id ",
+        "WHERE md.player_id = ? ",
+        "ORDER BY m.id DESC"
+    );
 
-    Ok(matches)
+    sqlx::query_as::<_, MatchExtended>(QUERY)
+        .bind(id)
+        .fetch_all(state.db())
+        .await
 }
 
-pub async fn fetch_extended_match<T: DbConnection>(
+pub async fn fetch_extended_match<T: DatabaseState>(
     state: &T,
     id: u64,
-) -> anyhow::Result<MatchExtended> {
-    let a_match = sqlx::query_as::<_, MatchExtended>(
-        "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.frags, md.deaths, md.rating_after_match, md.rating_delta
-         FROM `match` m
-         JOIN match_detail md ON m.id = md.match_id
-         WHERE m.id = ?",
-    )
-    .bind(id)
-    .fetch_one(state.get_connection())
-    .await?;
+) -> sqlx::Result<MatchExtended> {
+    const QUERY: &str = const_str::concat!(
+        "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.frags, md.deaths, md.rating_after_match, md.rating_delta ",
+        "FROM `",
+        TABLE_NAME,
+        "` m ",
+        "JOIN match_detail md ON m.id = md.match_id ",
+        "WHERE m.id = ?"
+    );
 
-    Ok(a_match)
+    sqlx::query_as::<_, MatchExtended>(QUERY)
+        .bind(id)
+        .fetch_one(state.db())
+        .await
 }
 
-pub async fn fetch_all_matches<T: DbConnection>(state: &T) -> anyhow::Result<Vec<Match>> {
-    let matches = sqlx::query_as::<_, Match>("SELECT id, server_ip, map_name FROM `match`")
-        .fetch_all(state.get_connection())
-        .await?;
-
-    Ok(matches)
+pub async fn fetch_all_matches<T: DatabaseState>(state: &T) -> sqlx::Result<Vec<Match>> {
+    const QUERY: &str =
+        const_str::concat!("SELECT id, server_ip, map_name FROM `", TABLE_NAME, "`");
+    sqlx::query_as::<_, Match>(QUERY)
+        .fetch_all(state.db())
+        .await
 }
