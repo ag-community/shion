@@ -10,6 +10,7 @@ use crate::{
     repositories::{
         matches,
         players::{self},
+        stats,
     },
     settings::AppSettings,
 };
@@ -52,7 +53,12 @@ pub async fn create_player<T: DatabaseState>(state: &T, steam_id: String) -> Ser
 
 pub async fn fetch_player<T: DatabaseState>(state: &T, id: u64) -> ServiceResult<Player> {
     match players::fetch_one_by_id(state, id).await {
-        Ok(player) => Ok(player),
+        Ok(mut player) => {
+            let stats = stats::fetch_one_by_player_id(state, id).await?;
+            player.stats = stats;
+
+            Ok(player)
+        }
         Err(sqlx::Error::RowNotFound) => Err(AppError::PlayerNotFound),
         Err(e) => unexpected(e),
     }
@@ -88,6 +94,11 @@ pub async fn fetch_leaderboard<T: DatabaseState>(
     page: u32,
     limit: u32,
 ) -> ServiceResult<Vec<Player>> {
-    let leaderboard = players::fetch_leaderboard(state, page, limit).await?;
+    let mut leaderboard = players::fetch_leaderboard(state, page, limit).await?;
+    for player in &mut leaderboard {
+        let stats = stats::fetch_one_by_player_id(state, player.id).await?;
+
+        player.stats = stats;
+    }
     Ok(leaderboard)
 }

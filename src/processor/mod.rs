@@ -2,7 +2,7 @@ use anyhow::Ok;
 
 use crate::{
     lifecycle,
-    repositories::{matches, players},
+    repositories::{matches, stats},
     settings::AppSettings,
     usecases::match_details,
 };
@@ -14,7 +14,7 @@ pub async fn reprocess_all(settings: &AppSettings) -> anyhow::Result<()> {
 
     let matches = matches::fetch_all_matches(&state).await?;
 
-    let _ = players::reset_all_player_ratings(&state).await?;
+    let _ = stats::reset_all_player_stats(&state).await?;
 
     for match_entry in matches {
         tracing::info!("Reprocessing match ID: {}", match_entry.id);

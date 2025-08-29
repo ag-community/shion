@@ -1,4 +1,5 @@
 pub mod api;
+pub mod backfill;
 pub mod common;
 pub mod entities;
 pub mod lifecycle;

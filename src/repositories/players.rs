@@ -14,7 +14,7 @@ pub async fn create<T: DatabaseState>(
         "` (steam_id, steam_name, steam_avatar_url) VALUES (?, ?, ?)"
     );
     const SELECT_QUERY: &str = const_str::concat!(
-        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM `",
+        "SELECT id, steam_id, steam_name, steam_avatar_url FROM `",
         TABLE_NAME,
         "` WHERE id = ?"
     );
@@ -35,7 +35,7 @@ pub async fn create<T: DatabaseState>(
 
 pub async fn fetch_one_by_id<T: DatabaseState>(state: &T, id: u64) -> sqlx::Result<Player> {
     const QUERY: &str = const_str::concat!(
-        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM `",
+        "SELECT id, steam_id, steam_name, steam_avatar_url FROM `",
         TABLE_NAME,
         "` WHERE id = ?"
     );
@@ -51,7 +51,7 @@ pub async fn fetch_one_by_steamid<T: DatabaseState>(
     steam_id: String,
 ) -> sqlx::Result<Player> {
     const QUERY: &str = const_str::concat!(
-        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM `",
+        "SELECT id, steam_id, steam_name, steam_avatar_url FROM `",
         TABLE_NAME,
         "` WHERE steam_id = ?"
     );
@@ -62,13 +62,13 @@ pub async fn fetch_one_by_steamid<T: DatabaseState>(
         .await
 }
 
-pub async fn fetch_many_by_steamids<T: DatabaseState>(
+pub async fn fetch_many_by_ids<T: DatabaseState>(
     state: &T,
     ids: Vec<u64>,
 ) -> sqlx::Result<Vec<Player>> {
     let values = ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
     let query = format!(
-        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM {} WHERE id IN ({})",
+        "SELECT id, steam_id, steam_name, steam_avatar_url FROM {} WHERE id IN ({})",
         TABLE_NAME, values
     );
 
@@ -80,15 +80,27 @@ pub async fn fetch_many_by_steamids<T: DatabaseState>(
     sql_query.fetch_all(state.db()).await
 }
 
+pub async fn fetch_all<T: DatabaseState>(state: &T) -> sqlx::Result<Vec<Player>> {
+    const QUERY: &str = const_str::concat!(
+        "SELECT id, steam_id, steam_name, steam_avatar_url FROM `",
+        TABLE_NAME,
+        "`"
+    );
+
+    sqlx::query_as::<_, Player>(QUERY)
+        .fetch_all(state.db())
+        .await
+}
+
 pub async fn fetch_leaderboard<T: DatabaseState>(
     state: &T,
     page: u32,
     limit: u32,
 ) -> sqlx::Result<Vec<Player>> {
     const QUERY: &str = const_str::concat!(
-        "SELECT id, steam_id, steam_name, steam_avatar_url, rating, uncertainty FROM `",
+        "SELECT p.id, p.steam_id, p.steam_name, p.steam_avatar_url FROM `",
         TABLE_NAME,
-        "` ORDER BY rating DESC LIMIT ? OFFSET ?"
+        "` p LEFT JOIN stats s ON p.id = s.player_id ORDER BY s.rating DESC LIMIT ? OFFSET ?"
     );
     let limit = std::cmp::min(limit, 50);
     let offset = (page - 1) * limit;
@@ -98,36 +110,4 @@ pub async fn fetch_leaderboard<T: DatabaseState>(
         .bind(offset)
         .fetch_all(state.db())
         .await
-}
-
-pub async fn update_player_rating<T: DatabaseState>(
-    state: &T,
-    id: u64,
-    rating: f64,
-    uncertainty: f64,
-) -> sqlx::Result<()> {
-    const QUERY: &str = const_str::concat!(
-        "UPDATE `",
-        TABLE_NAME,
-        "` SET rating = ?, uncertainty = ? WHERE id = ?"
-    );
-
-    sqlx::query(QUERY)
-        .bind(rating)
-        .bind(uncertainty)
-        .bind(id)
-        .execute(state.db())
-        .await?;
-    Ok(())
-}
-
-pub async fn reset_all_player_ratings<T: DatabaseState>(state: &T) -> sqlx::Result<()> {
-    const QUERY: &str = const_str::concat!(
-        "UPDATE `",
-        TABLE_NAME,
-        "` SET rating = 1000, uncertainty = 333.33333"
-    );
-
-    sqlx::query(QUERY).execute(state.db()).await?;
-    Ok(())
 }

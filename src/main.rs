@@ -1,6 +1,6 @@
 use core::panic;
 use shion::settings::AppSettings;
-use shion::{api, lifecycle, processor};
+use shion::{api, backfill, lifecycle, processor};
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
@@ -9,6 +9,7 @@ async fn main() -> anyhow::Result<()> {
 
     match settings.app_component.as_str() {
         "api" => api::serve(settings).await,
+        "backfill" => backfill::backfill_stats(&settings).await,
         "processor" => processor::reprocess_all(settings).await,
         _ => panic!("Unknown app component"),
     }

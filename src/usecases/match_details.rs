@@ -14,6 +14,7 @@ use crate::{
     repositories::{
         match_details,
         players::{self},
+        stats,
     },
 };
 
@@ -92,16 +93,18 @@ pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> Servic
         .iter()
         .map(|detail| detail.player_id)
         .collect();
-    let players = players::fetch_many_by_steamids(state, player_ids).await?;
+    let players = players::fetch_many_by_ids(state, player_ids).await?;
 
     let mut player_ratings: Vec<PlayerRating> = Vec::new();
 
     for player in &players {
         if let Some(detail) = match_details.iter().find(|d| d.player_id == player.id) {
+            let stats = stats::fetch_one_by_player_id(state, player.id).await?;
+
             player_ratings.push(PlayerRating {
                 rating: WengLinRating {
-                    rating: player.rating,
-                    uncertainty: player.uncertainty,
+                    rating: stats.rating,
+                    uncertainty: stats.uncertainty,
                 },
                 detail: detail.clone(),
             });
@@ -164,11 +167,18 @@ pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> Servic
             0.0,
         ));
 
-        players::update_player_rating(
+        let is_winner = (detail.model == "blue" && outcome == Outcomes::WIN)
+            || (detail.model == "red" && outcome == Outcomes::LOSS);
+
+        stats::update_stats(
             state,
             detail.player_id,
             new_rating.rating,
             new_rating.uncertainty,
+            if is_winner { 1 } else { 0 },
+            if !is_winner { 1 } else { 0 },
+            detail.frags as i32,
+            detail.deaths as i32,
         )
         .await?;
 
