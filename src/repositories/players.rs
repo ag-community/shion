@@ -1,4 +1,7 @@
-use crate::{common::state::DatabaseState, entities::players::Player};
+use crate::{
+    common::state::DatabaseState,
+    entities::players::{Player, PlayerHistoryCapture},
+};
 
 const TABLE_NAME: &str = "player";
 
@@ -108,6 +111,34 @@ pub async fn fetch_leaderboard<T: DatabaseState>(
     sqlx::query_as::<_, Player>(QUERY)
         .bind(limit)
         .bind(offset)
+        .fetch_all(state.db())
+        .await
+}
+
+// TODO: Move this to matches maybe?
+pub async fn fetch_rating_history<T: DatabaseState>(
+    state: &T,
+    id: u64,
+) -> sqlx::Result<Vec<PlayerHistoryCapture>> {
+    const QUERY: &str = "
+        SELECT t.captured_at, t.rating
+        FROM (
+            SELECT 
+                m.match_date as captured_at, 
+                md.rating_after_match as rating,
+                DATE(m.match_date) as match_day,
+                ROW_NUMBER() OVER (PARTITION BY DATE(m.match_date) ORDER BY m.match_date DESC) as rn
+            FROM match_detail md
+            JOIN `match` m ON md.match_id = m.id
+            WHERE md.player_id = ?
+              AND m.match_date >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+        ) t
+        WHERE t.rn = 1
+        ORDER BY t.captured_at ASC
+    ";
+
+    sqlx::query_as::<_, PlayerHistoryCapture>(QUERY)
+        .bind(id)
         .fetch_all(state.db())
         .await
 }

@@ -6,7 +6,10 @@ use crate::{
         error::{AppError, ServiceResult, unexpected},
         state::DatabaseState,
     },
-    entities::{matches::MatchExtended, players::Player},
+    entities::{
+        matches::MatchExtended,
+        players::{Player, PlayerHistory},
+    },
     repositories::{
         matches,
         players::{self},
@@ -101,4 +104,12 @@ pub async fn fetch_leaderboard<T: DatabaseState>(
         player.stats = stats;
     }
     Ok(leaderboard)
+}
+
+pub async fn fetch_rating_history<T: DatabaseState>(
+    state: &T,
+    id: u64,
+) -> ServiceResult<PlayerHistory> {
+    let history = players::fetch_rating_history(state, id).await?;
+    Ok(PlayerHistory { captures: history })
 }

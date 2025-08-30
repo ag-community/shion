@@ -6,7 +6,10 @@ use serde::Deserialize;
 
 use crate::{
     common::{error::ServiceResponse, state::State},
-    entities::{matches::MatchExtended, players::Player},
+    entities::{
+        matches::MatchExtended,
+        players::{Player, PlayerHistory},
+    },
     usecases::players,
 };
 
@@ -31,6 +34,15 @@ async fn fetch_leaderboard(
 
     let leaderboard = players::fetch_leaderboard(&state, page, limit).await?;
     Ok(Json(leaderboard))
+}
+
+#[get("/{id}/rating_history")]
+async fn fetch_player_rating_history(
+    state: Data<State>,
+    path: web::Path<u64>,
+) -> ServiceResponse<PlayerHistory> {
+    let history = players::fetch_rating_history(&state, path.into_inner()).await?;
+    Ok(Json(history))
 }
 
 #[get("/{id}/matches")]
@@ -62,6 +74,7 @@ async fn create_player(state: Data<State>, body: Json<RequestBody>) -> ServiceRe
 pub fn router(conf: &mut web::ServiceConfig) {
     let scope = web::scope("/players")
         .service(fetch_leaderboard)
+        .service(fetch_player_rating_history)
         .service(fetch_player_matches)
         .service(fetch_player)
         .service(create_player);
