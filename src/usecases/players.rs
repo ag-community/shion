@@ -50,6 +50,8 @@ pub async fn create_player<T: DatabaseState>(state: &T, steam_id: String) -> Ser
                 player_steam_info.avatarfull.to_string(),
             )
             .await?;
+            let _ = stats::update_stats(state, created_player.id, 1000.0, 333.33333, 0, 0, 0, 0)
+                .await?;
             return Ok(Player::from(created_player));
         }
     };
