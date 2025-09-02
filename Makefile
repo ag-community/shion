@@ -4,6 +4,9 @@ run:
 run-dev:
 	cargo watch -x 'run'
 
+build-release:
+	cargo build --release
+
 database-create:
 	sqlx database create
 
