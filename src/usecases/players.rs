@@ -8,7 +8,6 @@ use crate::{
     },
     entities::players::PlayerHistory as PlayerHistoryEntity,
     models::{
-        match_details::MatchDetail,
         matches::MatchExtended,
         players::{Player, PlayerHistory},
     },
@@ -85,19 +84,11 @@ pub async fn fetch_player_matches<T: DatabaseState>(
     let mut result_matches: Vec<MatchExtended> = Vec::new();
 
     for existing_match in existing_matches {
-        let mut match_data = MatchExtended::from((existing_match.clone(), vec![]));
-
         let existing_match_details =
             crate::repositories::match_details::fetch_match_details(state, existing_match.id)
                 .await?;
 
-        let mut match_details = Vec::new();
-        for detail in existing_match_details {
-            let match_detail = MatchDetail::from(detail);
-            match_details.push(match_detail);
-        }
-
-        match_data.match_details = match_details;
+        let match_data = MatchExtended::from((existing_match.clone(), existing_match_details));
         result_matches.push(match_data);
     }
 
