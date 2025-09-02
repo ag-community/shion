@@ -82,7 +82,7 @@ pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> Servic
     let match_details = match_details::fetch_match_details(state, match_id).await?;
 
     if match_details.is_empty() {
-        tracing::warn!(
+        warn!(
             "No match details found for match ID: {}, skipping processing.",
             match_id
         );

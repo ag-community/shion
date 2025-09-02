@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub async fn reprocess_all(settings: &AppSettings) -> anyhow::Result<()> {
-    tracing::info!("Starting historical data processing...");
+    info!("Starting historical data processing...");
 
     let state = lifecycle::initialize_state(&settings).await?;
 
@@ -17,12 +17,12 @@ pub async fn reprocess_all(settings: &AppSettings) -> anyhow::Result<()> {
     let _ = stats::reset_all_player_stats(&state).await?;
 
     for match_entry in matches {
-        tracing::info!("Reprocessing match ID: {}", match_entry.id);
+        info!("Reprocessing match ID: {}", match_entry.id);
 
         let _ = match_details::process_match(&state, match_entry.id).await;
     }
 
-    tracing::info!("Historical data processing completed.");
+    info!("Historical data processing completed.");
 
     Ok(())
 }

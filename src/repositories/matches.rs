@@ -1,7 +1,4 @@
-use crate::{
-    common::state::DatabaseState,
-    entities::matches::{Match, MatchExtended},
-};
+use crate::{common::state::DatabaseState, entities::matches::Match};
 
 const TABLE_NAME: &str = "match";
 
@@ -34,12 +31,12 @@ pub async fn create<T: DatabaseState>(
         .await
 }
 
-pub async fn fetch_extended_matches<T: DatabaseState>(
+pub async fn fetch_matches<T: DatabaseState>(
     state: &T,
     id: u64,
     page: u32,
     limit: u32,
-) -> sqlx::Result<Vec<MatchExtended>> {
+) -> sqlx::Result<Vec<Match>> {
     const QUERY: &str = const_str::concat!(
         "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.rating_after_match, md.rating_delta ",
         "FROM `",
@@ -52,7 +49,7 @@ pub async fn fetch_extended_matches<T: DatabaseState>(
     let limit = std::cmp::min(limit, 50);
     let offset = (page - 1) * limit;
 
-    sqlx::query_as::<_, MatchExtended>(QUERY)
+    sqlx::query_as::<_, Match>(QUERY)
         .bind(id)
         .bind(limit)
         .bind(offset)
@@ -60,10 +57,7 @@ pub async fn fetch_extended_matches<T: DatabaseState>(
         .await
 }
 
-pub async fn fetch_extended_match<T: DatabaseState>(
-    state: &T,
-    id: u64,
-) -> sqlx::Result<MatchExtended> {
+pub async fn fetch_match<T: DatabaseState>(state: &T, id: u64) -> sqlx::Result<Match> {
     const QUERY: &str = const_str::concat!(
         "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.frags, md.deaths, md.rating_after_match, md.rating_delta ",
         "FROM `",
@@ -73,7 +67,7 @@ pub async fn fetch_extended_match<T: DatabaseState>(
         "WHERE m.id = ?"
     );
 
-    sqlx::query_as::<_, MatchExtended>(QUERY)
+    sqlx::query_as::<_, Match>(QUERY)
         .bind(id)
         .fetch_one(state.db())
         .await

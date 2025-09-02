@@ -6,7 +6,9 @@ use crate::{
         error::{AppError, ServiceResult, unexpected},
         state::DatabaseState,
     },
-    entities::{
+    entities::players::PlayerHistory as PlayerHistoryEntity,
+    models::{
+        match_details::MatchDetail,
         matches::MatchExtended,
         players::{Player, PlayerHistory},
     },
@@ -42,16 +44,17 @@ pub async fn create_player<T: DatabaseState>(state: &T, steam_id: String) -> Ser
     let player = match players::fetch_one_by_steamid(state, steam_id.to_string()).await {
         Ok(player) => player,
         Err(_e) => {
-            return Ok(players::create(
+            let created_player = players::create(
                 state,
                 steam_id.to_string(),
                 player_steam_info.personaname.to_string(),
                 player_steam_info.avatarfull.to_string(),
             )
-            .await?);
+            .await?;
+            return Ok(Player::from(created_player));
         }
     };
-    Ok(player)
+    Ok(Player::from(player))
 }
 
 pub async fn fetch_player<T: DatabaseState>(state: &T, id: u64) -> ServiceResult<Player> {
@@ -60,7 +63,7 @@ pub async fn fetch_player<T: DatabaseState>(state: &T, id: u64) -> ServiceResult
             let stats = stats::fetch_one_by_player_id(state, id).await?;
             player.stats = stats;
 
-            Ok(player)
+            Ok(Player::from(player))
         }
         Err(sqlx::Error::RowNotFound) => Err(AppError::PlayerNotFound),
         Err(e) => unexpected(e),
@@ -73,23 +76,32 @@ pub async fn fetch_player_matches<T: DatabaseState>(
     page: u32,
     limit: u32,
 ) -> ServiceResult<Vec<MatchExtended>> {
-    let mut existing_matches = match matches::fetch_extended_matches(state, id, page, limit).await {
+    let existing_matches = match matches::fetch_matches(state, id, page, limit).await {
         Ok(matches) => matches,
         Err(sqlx::Error::RowNotFound) => return Err(AppError::PlayerMatchesNotFound),
         Err(e) => return unexpected(e),
     };
 
-    for existing_match in &mut existing_matches {
-        let existing_match_details =
-            crate::repositories::match_details::fetch_extended_match_details(
-                state,
-                existing_match.id,
-            )
-            .await?;
+    let mut result_matches: Vec<MatchExtended> = Vec::new();
 
-        existing_match.match_details = existing_match_details;
+    for existing_match in existing_matches {
+        let mut match_data = MatchExtended::from((existing_match.clone(), vec![]));
+
+        let existing_match_details =
+            crate::repositories::match_details::fetch_match_details(state, existing_match.id)
+                .await?;
+
+        let mut match_details = Vec::new();
+        for detail in existing_match_details {
+            let match_detail = MatchDetail::from(detail);
+            match_details.push(match_detail);
+        }
+
+        match_data.match_details = match_details;
+        result_matches.push(match_data);
     }
-    Ok(existing_matches)
+
+    Ok(result_matches)
 }
 
 pub async fn fetch_leaderboard<T: DatabaseState>(
@@ -103,7 +115,7 @@ pub async fn fetch_leaderboard<T: DatabaseState>(
 
         player.stats = stats;
     }
-    Ok(leaderboard)
+    Ok(leaderboard.into_iter().map(Player::from).collect())
 }
 
 pub async fn fetch_rating_history<T: DatabaseState>(
@@ -111,5 +123,7 @@ pub async fn fetch_rating_history<T: DatabaseState>(
     id: u64,
 ) -> ServiceResult<PlayerHistory> {
     let history = players::fetch_rating_history(state, id).await?;
-    Ok(PlayerHistory { captures: history })
+    Ok(PlayerHistory::from(PlayerHistoryEntity {
+        captures: history,
+    }))
 }

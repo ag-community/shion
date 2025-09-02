@@ -1,10 +1,12 @@
-use serde::Serialize;
 use sqlx::prelude::FromRow;
 
-#[derive(Serialize, FromRow, Debug, Clone)]
+#[derive(FromRow, Clone)]
 pub struct MatchDetail {
     pub id: u64,
     pub player_id: u64,
+    pub steam_name: String,
+    pub steam_id: String,
+    pub steam_avatar_url: String,
     pub match_id: u64,
     pub frags: i16,
     pub deaths: i16,

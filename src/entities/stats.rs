@@ -1,7 +1,6 @@
-use serde::Serialize;
 use sqlx::prelude::FromRow;
 
-#[derive(Serialize, FromRow, Debug, Clone, Default)]
+#[derive(FromRow, Default)]
 pub struct Stats {
     pub player_id: u64,
     pub rating: f64,

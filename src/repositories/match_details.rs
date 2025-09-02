@@ -1,7 +1,4 @@
-use crate::{
-    common::state::DatabaseState,
-    entities::{match_details::MatchDetail, matches::MatchDetailExtended},
-};
+use crate::{common::state::DatabaseState, entities::match_details::MatchDetail};
 
 const TABLE_NAME: &str = "match_detail";
 
@@ -51,25 +48,8 @@ pub async fn fetch_match_details<T: DatabaseState>(
     state: &T,
     match_id: u64,
 ) -> sqlx::Result<Vec<MatchDetail>> {
-    const QUERY: &str = const_str::concat!(
-        "SELECT id, player_id, match_id, frags, deaths, average_ping, damage_dealt, damage_taken, model, rating_after_match, rating_delta ",
-        "FROM `",
-        TABLE_NAME,
-        "` WHERE match_id = ?"
-    );
-
-    sqlx::query_as::<_, MatchDetail>(QUERY)
-        .bind(match_id)
-        .fetch_all(state.db())
-        .await
-}
-
-pub async fn fetch_extended_match_details<T: DatabaseState>(
-    state: &T,
-    match_id: u64,
-) -> sqlx::Result<Vec<MatchDetailExtended>> {
-    sqlx::query_as::<_, MatchDetailExtended>(
-        "SELECT m.id, m.player_id, s.steam_name, s.steam_id, s.steam_avatar_url, m.frags, m.deaths, m.average_ping, m.damage_dealt, m.damage_taken, m.model, m.rating_after_match, m.rating_delta
+    sqlx::query_as::<_, MatchDetail>(
+        "SELECT m.id, m.player_id, s.steam_name, s.steam_id, s.steam_avatar_url, m.match_id, m.frags, m.deaths, m.average_ping, m.damage_dealt, m.damage_taken, m.model, m.rating_after_match, m.rating_delta
          FROM match_detail m
          LEFT JOIN player s ON m.player_id = s.id
          WHERE m.match_id = ?", 

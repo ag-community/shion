@@ -25,11 +25,11 @@ pub struct RequestBody {
 async fn create_match_details(
     state: Data<State>,
     details: Json<Vec<RequestBody>>,
-) -> ServiceResponse<String> {
+) -> ServiceResponse<()> {
     usecases::match_details::create_match_details(&state, Json(details.clone())).await?;
     usecases::match_details::process_match(&state, details[0].match_id).await?;
 
-    Ok(Json("Match details created successfully".to_string()))
+    Ok(Json(()))
 }
 
 pub fn router(conf: &mut web::ServiceConfig) {

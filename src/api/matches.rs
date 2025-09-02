@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::{
     common::{error::ServiceResponse, state::State},
-    entities::matches::{Match, MatchExtended},
+    models::matches::{Match, MatchExtended},
     usecases::matches,
 };
 

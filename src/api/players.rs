@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::{
     common::{error::ServiceResponse, state::State},
-    entities::{
+    models::{
         matches::MatchExtended,
         players::{Player, PlayerHistory},
     },
@@ -42,7 +42,7 @@ async fn fetch_player_rating_history(
     path: web::Path<u64>,
 ) -> ServiceResponse<PlayerHistory> {
     let history = players::fetch_rating_history(&state, path.into_inner()).await?;
-    Ok(Json(history))
+    Ok(Json(PlayerHistory::from(history)))
 }
 
 #[get("/{id}/matches")]
