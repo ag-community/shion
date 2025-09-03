@@ -1,3 +1,6 @@
+install-sqlx-cli:
+	cargo install sqlx-cli --no-default-features --features mysql,rustls
+
 run:
 	cargo run
 
