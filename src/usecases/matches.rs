@@ -12,7 +12,7 @@ pub async fn create_match<T: DatabaseState>(
     map_name: String,
     server_ip: String,
 ) -> ServiceResult<Match> {
-    let new_match = matches::create(state, map_name.to_string(), server_ip.to_string()).await?;
+    let new_match = matches::create(state, server_ip.to_string(), map_name.to_string()).await?;
     Ok(Match::from(new_match))
 }
 
