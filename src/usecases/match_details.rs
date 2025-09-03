@@ -57,7 +57,7 @@ pub async fn create_match_details<T: DatabaseState>(
     state: &T,
     details: Json<Vec<RequestBody>>,
 ) -> ServiceResult<()> {
-    let _ = validate_teams(&details);
+    validate_teams(&details)?;
 
     for detail in details.iter() {
         match_details::create(
