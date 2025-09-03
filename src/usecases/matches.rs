@@ -9,8 +9,8 @@ use crate::{
 
 pub async fn create_match<T: DatabaseState>(
     state: &T,
-    map_name: String,
     server_ip: String,
+    map_name: String,
 ) -> ServiceResult<Match> {
     let new_match = matches::create(state, server_ip.to_string(), map_name.to_string()).await?;
     Ok(Match::from(new_match))
