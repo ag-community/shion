@@ -119,7 +119,10 @@ pub async fn fetch_leaderboard<T: DatabaseState>(
     const QUERY: &str = const_str::concat!(
         "SELECT p.id, p.steam_id, p.steam_name, p.steam_avatar_url, p.country FROM `",
         TABLE_NAME,
-        "` p LEFT JOIN stats s ON p.id = s.player_id ORDER BY s.rating DESC LIMIT ? OFFSET ?"
+        "` p ",
+        "LEFT JOIN stats s ON p.id = s.player_id ",
+        "WHERE (s.wins + s.losses) > 0 ",
+        "ORDER BY s.rating DESC LIMIT ? OFFSET ?"
     );
     let limit = std::cmp::min(limit, 50);
     let offset = (page - 1) * limit;
