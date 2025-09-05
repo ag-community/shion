@@ -38,7 +38,10 @@ pub async fn fetch_matches<T: DatabaseState>(
     limit: u32,
 ) -> sqlx::Result<Vec<Match>> {
     const QUERY: &str = const_str::concat!(
-        "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.rating_after_match, md.rating_delta ",
+        "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.rating_after_match, md.rating_delta, ",
+        "CAST((SELECT CONCAT(COUNT(DISTINCT CASE WHEN model = 'blue' THEN player_id END), 'vs', ",
+        "COUNT(DISTINCT CASE WHEN model = 'red' THEN player_id END)) ",
+        "FROM match_detail WHERE match_id = m.id) AS CHAR) AS match_type ",
         "FROM `",
         TABLE_NAME,
         "` m ",
@@ -59,7 +62,10 @@ pub async fn fetch_matches<T: DatabaseState>(
 
 pub async fn fetch_match<T: DatabaseState>(state: &T, id: u64) -> sqlx::Result<Match> {
     const QUERY: &str = const_str::concat!(
-        "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.frags, md.deaths, md.rating_after_match, md.rating_delta ",
+        "SELECT m.id, m.server_ip, m.match_date, m.map_name, md.frags, md.deaths, md.rating_after_match, md.rating_delta, ",
+        "CAST((SELECT CONCAT(COUNT(DISTINCT CASE WHEN model = 'blue' THEN player_id END), 'vs', ",
+        "COUNT(DISTINCT CASE WHEN model = 'red' THEN player_id END)) ",
+        "FROM match_detail WHERE match_id = m.id) AS CHAR) AS match_type ",
         "FROM `",
         TABLE_NAME,
         "` m ",

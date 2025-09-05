@@ -19,6 +19,7 @@ pub struct MatchExtended {
     pub server_ip: String,
     pub match_date: DateTime<Utc>,
     pub map_name: String,
+    pub match_type: String,
     pub match_details: Vec<MatchDetail>,
 }
 
@@ -40,6 +41,7 @@ impl From<(MatchEntity, Vec<MatchDetailEntity>)> for MatchExtended {
             server_ip: match_value.server_ip,
             match_date: match_value.match_date,
             map_name: match_value.map_name,
+            match_type: match_value.match_type,
             match_details: match_details_value
                 .into_iter()
                 .map(MatchDetail::from)

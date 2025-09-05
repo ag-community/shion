@@ -9,6 +9,8 @@ pub struct Match {
     pub match_date: DateTime<Utc>,
     pub map_name: String,
     #[sqlx(default)]
+    pub match_type: String,
+    #[sqlx(default)]
     pub frags: i16,
     #[sqlx(default)]
     pub deaths: i16,
