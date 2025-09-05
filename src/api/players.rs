@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use actix_web::{
     get, post,
     web::{self, Data, Json, Query},
@@ -16,6 +18,7 @@ use crate::{
 #[derive(Deserialize)]
 pub struct RequestBody {
     pub steam_id: String,
+    pub ip_address: IpAddr,
 }
 
 #[derive(Deserialize)]
@@ -67,7 +70,7 @@ async fn fetch_player(state: Data<State>, path: web::Path<u64>) -> ServiceRespon
 
 #[post("/")]
 async fn create_player(state: Data<State>, body: Json<RequestBody>) -> ServiceResponse<Player> {
-    let player = players::create_player(&state, body.steam_id.to_string()).await?;
+    let player = players::create_player(&state, body.steam_id.to_string(), body.ip_address).await?;
     Ok(Json(player))
 }
 

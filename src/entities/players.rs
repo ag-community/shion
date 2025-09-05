@@ -9,6 +9,7 @@ pub struct Player {
     pub steam_id: String,
     pub steam_name: String,
     pub steam_avatar_url: String,
+    pub country: String,
     #[sqlx(skip)]
     pub stats: Stats,
 }

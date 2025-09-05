@@ -12,6 +12,7 @@ pub struct Player {
     pub steam_id: String,
     pub steam_name: String,
     pub steam_avatar_url: String,
+    pub country: String,
     pub stats: Stats,
 }
 
@@ -33,6 +34,7 @@ impl From<PlayerEntity> for Player {
             steam_id: value.steam_id,
             steam_name: value.steam_name,
             steam_avatar_url: value.steam_avatar_url,
+            country: value.country,
             stats: value.stats.into(),
         }
     }

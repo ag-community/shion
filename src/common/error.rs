@@ -29,6 +29,10 @@ pub enum AppError {
 
     InvalidModel,
     UnevenTeams,
+
+    AGDBInvalidSteamID,
+    AGDBPlayerNotFound,
+    AGDBPartialData,
 }
 
 impl<E: Into<anyhow::Error>> From<E> for AppError {
@@ -59,6 +63,10 @@ impl AppError {
 
             AppError::InvalidModel => "invalid_model",
             AppError::UnevenTeams => "uneven_teams",
+
+            AppError::AGDBInvalidSteamID => "agdb_invalid_steamid",
+            AppError::AGDBPlayerNotFound => "agdb_player_not_found",
+            AppError::AGDBPartialData => "agdb_partial_data",
         }
     }
 
@@ -78,14 +86,22 @@ impl AppError {
 
             AppError::InvalidModel => "Invalid model value. Valid values are 'blue' or 'red'.",
             AppError::UnevenTeams => "Team sizes do not match.",
+
+            AppError::AGDBInvalidSteamID => "The provided Steam ID is invalid according to AGDB.",
+            AppError::AGDBPlayerNotFound => "No player found in AGDB for the provided Steam ID.",
+            AppError::AGDBPartialData => {
+                "The provided Steam ID is valid and there is partial data in AGDB, but the API didn't return any data."
+            }
         }
     }
 
     pub const fn http_status_code(&self) -> StatusCode {
         match self {
-            AppError::PlayerSteamIDInvalid | AppError::InvalidModel | AppError::UnevenTeams => {
-                StatusCode::BAD_REQUEST
-            }
+            AppError::PlayerSteamIDInvalid
+            | AppError::InvalidModel
+            | AppError::UnevenTeams
+            | AppError::AGDBInvalidSteamID
+            | AppError::AGDBPartialData => StatusCode::BAD_REQUEST,
 
             AppError::Unauthorized => StatusCode::UNAUTHORIZED,
 
@@ -93,7 +109,8 @@ impl AppError {
             | AppError::PlayerMatchesNotFound
             | AppError::PlayerSteamDoesNotExist
             | AppError::MatchNotFound
-            | AppError::MatchDetailNotFound => StatusCode::NOT_FOUND,
+            | AppError::MatchDetailNotFound
+            | AppError::AGDBPlayerNotFound => StatusCode::NOT_FOUND,
 
             AppError::Unexpected | AppError::InternalServerError(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR

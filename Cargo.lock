@@ -2555,6 +2555,7 @@ dependencies = [
  "chrono",
  "const-str",
  "dotenv",
+ "reqwest",
  "serde",
  "skillratings",
  "sqlx",

@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use steam_api_client::{Player as SteamPlayer, SteamClient};
 use steamid_ng::SteamID;
 
@@ -17,9 +19,14 @@ use crate::{
         stats,
     },
     settings::AppSettings,
+    usecases::location,
 };
 
-pub async fn create_player<T: DatabaseState>(state: &T, steam_id: String) -> ServiceResult<Player> {
+pub async fn create_player<T: DatabaseState>(
+    state: &T,
+    steam_id: String,
+    ip_address: IpAddr,
+) -> ServiceResult<Player> {
     let settings = AppSettings::get();
     let steam_id_2 = match SteamID::from_steam2(steam_id.as_str()) {
         Ok(id) => id,
@@ -43,11 +50,13 @@ pub async fn create_player<T: DatabaseState>(state: &T, steam_id: String) -> Ser
     let player = match players::fetch_one_by_steamid(state, steam_id.to_string()).await {
         Ok(player) => player,
         Err(_e) => {
+            let location_info = location::get_location(ip_address).await;
             let created_player = players::create(
                 state,
                 steam_id.to_string(),
                 player_steam_info.personaname.to_string(),
                 player_steam_info.avatarfull.to_string(),
+                location_info.country,
             )
             .await?;
             let _ = stats::update_stats(state, created_player.id, 1000.0, 333.33333, 0, 0, 0, 0)
