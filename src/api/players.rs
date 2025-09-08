@@ -27,6 +27,20 @@ pub struct RequestQuery {
     limit: Option<u32>,
 }
 
+#[derive(Deserialize)]
+pub struct SearchRequestQuery {
+    value: String,
+}
+
+#[get("/search")]
+async fn search_players(
+    state: Data<State>,
+    query: Query<SearchRequestQuery>,
+) -> ServiceResponse<Vec<Player>> {
+    let players = players::search_players(&state, query.value.to_string()).await?;
+    Ok(Json(players))
+}
+
 #[get("/leaderboard")]
 async fn fetch_leaderboard(
     state: Data<State>,
@@ -76,6 +90,7 @@ async fn create_player(state: Data<State>, body: Json<RequestBody>) -> ServiceRe
 
 pub fn router(conf: &mut web::ServiceConfig) {
     let scope = web::scope("/players")
+        .service(search_players)
         .service(fetch_leaderboard)
         .service(fetch_player_rating_history)
         .service(fetch_player_matches)

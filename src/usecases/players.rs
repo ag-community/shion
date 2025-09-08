@@ -80,6 +80,18 @@ pub async fn fetch_player<T: DatabaseState>(state: &T, id: u64) -> ServiceResult
     }
 }
 
+pub async fn search_players<T: DatabaseState>(
+    state: &T,
+    value: String,
+) -> ServiceResult<Vec<Player>> {
+    let players = match players::search(state, value).await {
+        Ok(players) => players,
+        Err(e) => return unexpected(e),
+    };
+
+    Ok(players.into_iter().map(Player::from).collect())
+}
+
 pub async fn fetch_player_matches<T: DatabaseState>(
     state: &T,
     id: u64,

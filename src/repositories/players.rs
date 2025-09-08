@@ -150,6 +150,21 @@ pub async fn update_country<T: DatabaseState>(
     Ok(())
 }
 
+pub async fn search<T: DatabaseState>(state: &T, query: String) -> sqlx::Result<Vec<Player>> {
+    const QUERY: &str = const_str::concat!(
+        "SELECT id, steam_id, steam_name, steam_avatar_url, country FROM `",
+        TABLE_NAME,
+        "` WHERE steam_id LIKE ? OR steam_name LIKE ? ORDER BY id ASC"
+    );
+    let like_query = format!("%{}%", query);
+
+    sqlx::query_as::<_, Player>(QUERY)
+        .bind(&like_query)
+        .bind(&like_query)
+        .fetch_all(state.db())
+        .await
+}
+
 // TODO: Move this to matches maybe?
 pub async fn fetch_rating_history<T: DatabaseState>(
     state: &T,
