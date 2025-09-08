@@ -6,6 +6,7 @@ pub mod api;
 pub mod backfill;
 pub mod common;
 pub mod entities;
+pub mod fixer;
 pub mod lifecycle;
 pub mod models;
 pub mod processor;

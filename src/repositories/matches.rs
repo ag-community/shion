@@ -86,3 +86,12 @@ pub async fn fetch_all_matches<T: DatabaseState>(state: &T) -> sqlx::Result<Vec<
         .fetch_all(state.db())
         .await
 }
+
+pub async fn delete_match<T: DatabaseState>(state: &T, match_id: u64) -> sqlx::Result<()> {
+    sqlx::query("DELETE FROM `match` WHERE id = ?")
+        .bind(match_id)
+        .execute(state.db())
+        .await?;
+
+    Ok(())
+}

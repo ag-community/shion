@@ -74,3 +74,12 @@ pub async fn update_ratings<T: DatabaseState>(
 
     Ok(())
 }
+
+pub async fn delete_by_match_id<T: DatabaseState>(state: &T, match_id: u64) -> sqlx::Result<()> {
+    sqlx::query("DELETE FROM `match_detail` WHERE match_id = ?")
+        .bind(match_id)
+        .execute(state.db())
+        .await?;
+
+    Ok(())
+}
