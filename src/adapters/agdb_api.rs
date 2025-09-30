@@ -7,7 +7,7 @@ fn make_url<T: Display>(steam_id: T) -> String {
     format!("https://agdb.7mochi.ru/players/{steam_id}")
 }
 
-static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| reqwest::Client::new());
+static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
 #[derive(Debug, Deserialize)]
 pub struct AGDBPlayer {

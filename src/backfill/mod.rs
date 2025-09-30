@@ -10,14 +10,14 @@ use crate::{
 pub async fn backfill_stats(settings: &AppSettings) -> anyhow::Result<()> {
     info!("Starting stats backfill...");
 
-    let state = lifecycle::initialize_state(&settings).await?;
+    let state = lifecycle::initialize_state(settings).await?;
 
     let players = players::fetch_all(&state).await?;
 
     for player in players {
         info!("Backfilling stats for player ID: {}", player.id);
 
-        let _ = stats::update_stats(&state, player.id, 1000.0, 333.33333, 0, 0, 0, 0).await?;
+        stats::update_stats(&state, player.id, 1000.0, 333.33333, 0, 0, 0, 0).await?;
     }
 
     info!("Stats backfill completed.");
@@ -30,7 +30,7 @@ pub async fn backfill_stats(settings: &AppSettings) -> anyhow::Result<()> {
 pub async fn backfill_countries(settings: &AppSettings) -> anyhow::Result<()> {
     info!("Starting countries backfill...");
 
-    let state = lifecycle::initialize_state(&settings).await?;
+    let state = lifecycle::initialize_state(settings).await?;
 
     let players = players::fetch_all_with_unknown_country(&state).await?;
 

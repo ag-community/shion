@@ -2,16 +2,17 @@ use crate::{common::state::DatabaseState, entities::match_details::MatchDetail};
 
 const TABLE_NAME: &str = "match_detail";
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create<T: DatabaseState>(
     state: &T,
-    steam_id: String,
+    steam_id: &str,
     match_id: u64,
     frags: i16,
     deaths: i16,
     average_ping: u16,
     damage_dealt: u16,
     damage_taken: u16,
-    model: String,
+    model: &str,
     rating_after_match: f64,
     rating_delta: f64,
 ) -> sqlx::Result<()> {

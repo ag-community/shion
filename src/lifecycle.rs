@@ -14,7 +14,7 @@ pub fn initialize_logging(settings: &AppSettings) {
 pub async fn initialize_state(settings: &AppSettings) -> anyhow::Result<State> {
     info!("Initializing application state...");
     info!("Connecting to the database...");
-    let db = initialize_db(&settings)
+    let db = initialize_db(settings)
         .await
         .expect("Failed to connect to the database");
     Ok(State { db })

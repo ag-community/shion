@@ -42,7 +42,7 @@ pub fn validate_teams(details: &Json<Vec<RequestBody>>) -> ServiceResult<()> {
     Ok(())
 }
 
-pub fn determine_winner(blue_stats: &Vec<i16>, red_stats: &Vec<i16>) -> Outcomes {
+pub fn determine_winner(blue_stats: &[i16], red_stats: &[i16]) -> Outcomes {
     let blue_score: i16 = blue_stats.iter().sum();
     let red_score: i16 = red_stats.iter().sum();
 
@@ -55,21 +55,21 @@ pub fn determine_winner(blue_stats: &Vec<i16>, red_stats: &Vec<i16>) -> Outcomes
 
 pub async fn create_match_details<T: DatabaseState>(
     state: &T,
-    details: Json<Vec<RequestBody>>,
+    details: &Json<Vec<RequestBody>>,
 ) -> ServiceResult<()> {
-    validate_teams(&details)?;
+    validate_teams(details)?;
 
     for detail in details.iter() {
         match_details::create(
             state,
-            detail.steam_id.to_string(),
+            &detail.steam_id,
             detail.match_id,
             detail.frags,
             detail.deaths,
             detail.average_ping,
             detail.damage_dealt,
             detail.damage_taken,
-            detail.model.to_string(),
+            &detail.model,
             0.0,
             0.0,
         )
@@ -129,12 +129,12 @@ pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> Servic
             .iter()
             .filter(|d| d.model == "blue")
             .map(|d| d.frags)
-            .collect(),
+            .collect::<Vec<i16>>(),
         &match_details
             .iter()
             .filter(|d| d.model == "red")
             .map(|d| d.frags)
-            .collect(),
+            .collect::<Vec<i16>>(),
     );
 
     let (new_blue_ratings, new_red_ratings) =
@@ -147,7 +147,7 @@ pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> Servic
         .zip(new_blue_ratings.iter())
         .for_each(|(player, &new_rating)| {
             let rating_delta = new_rating.rating - player.rating.rating;
-            updated_ratings.insert(player.detail.player_id.clone(), (new_rating, rating_delta));
+            updated_ratings.insert(player.detail.player_id, (new_rating, rating_delta));
         });
 
     red_team_players
@@ -155,7 +155,7 @@ pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> Servic
         .zip(new_red_ratings.iter())
         .for_each(|(player, &new_rating)| {
             let rating_delta = new_rating.rating - player.rating.rating;
-            updated_ratings.insert(player.detail.player_id.clone(), (new_rating, rating_delta));
+            updated_ratings.insert(player.detail.player_id, (new_rating, rating_delta));
         });
 
     for detail in match_details.iter() {

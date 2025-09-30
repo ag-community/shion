@@ -4,8 +4,8 @@ const TABLE_NAME: &str = "match";
 
 pub async fn create<T: DatabaseState>(
     state: &T,
-    server_ip: String,
-    map_name: String,
+    server_ip: &str,
+    map_name: &str,
 ) -> sqlx::Result<Match> {
     const INSERT_QUERY: &str = const_str::concat!(
         "INSERT INTO `",

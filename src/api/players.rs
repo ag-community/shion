@@ -37,7 +37,7 @@ async fn search_players(
     state: Data<State>,
     query: Query<SearchRequestQuery>,
 ) -> ServiceResponse<Vec<Player>> {
-    let players = players::search_players(&state, query.value.to_string()).await?;
+    let players = players::search_players(&state, &query.value).await?;
     Ok(Json(players))
 }
 
@@ -59,7 +59,7 @@ async fn fetch_player_rating_history(
     path: web::Path<u64>,
 ) -> ServiceResponse<PlayerHistory> {
     let history = players::fetch_rating_history(&state, path.into_inner()).await?;
-    Ok(Json(PlayerHistory::from(history)))
+    Ok(Json(history))
 }
 
 #[get("/{id}/matches")]
@@ -84,7 +84,7 @@ async fn fetch_player(state: Data<State>, path: web::Path<u64>) -> ServiceRespon
 
 #[post("/")]
 async fn create_player(state: Data<State>, body: Json<RequestBody>) -> ServiceResponse<Player> {
-    let player = players::create_player(&state, body.steam_id.to_string(), body.ip_address).await?;
+    let player = players::create_player(&state, &body.steam_id, body.ip_address).await?;
     Ok(Json(player))
 }
 

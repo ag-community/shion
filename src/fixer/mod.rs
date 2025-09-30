@@ -10,7 +10,7 @@ use crate::{
 pub async fn fix_matches(settings: &AppSettings) -> anyhow::Result<()> {
     info!("Starting match fixes...");
 
-    let state = lifecycle::initialize_state(&settings).await?;
+    let state = lifecycle::initialize_state(settings).await?;
 
     let matches = matches::fetch_all_matches(&state).await?;
 

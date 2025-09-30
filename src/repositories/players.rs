@@ -7,10 +7,10 @@ const TABLE_NAME: &str = "player";
 
 pub async fn create<T: DatabaseState>(
     state: &T,
-    steam_id: String,
-    steam_name: String,
-    steam_avatar_url: String,
-    country: String,
+    steam_id: &str,
+    steam_name: &str,
+    steam_avatar_url: &str,
+    country: &str,
 ) -> sqlx::Result<Player> {
     const INSERT_QUERY: &str = const_str::concat!(
         "INSERT INTO `",
@@ -24,10 +24,10 @@ pub async fn create<T: DatabaseState>(
     );
 
     let player_id = sqlx::query(INSERT_QUERY)
-        .bind(&steam_id)
-        .bind(&steam_name)
-        .bind(&steam_avatar_url)
-        .bind(&country)
+        .bind(steam_id)
+        .bind(steam_name)
+        .bind(steam_avatar_url)
+        .bind(country)
         .execute(state.db())
         .await?
         .last_insert_id();
@@ -53,7 +53,7 @@ pub async fn fetch_one_by_id<T: DatabaseState>(state: &T, id: u64) -> sqlx::Resu
 
 pub async fn fetch_one_by_steamid<T: DatabaseState>(
     state: &T,
-    steam_id: String,
+    steam_id: &str,
 ) -> sqlx::Result<Player> {
     const QUERY: &str = const_str::concat!(
         "SELECT id, steam_id, steam_name, steam_avatar_url, country FROM `",
@@ -150,7 +150,7 @@ pub async fn update_country<T: DatabaseState>(
     Ok(())
 }
 
-pub async fn search<T: DatabaseState>(state: &T, query: String) -> sqlx::Result<Vec<Player>> {
+pub async fn search<T: DatabaseState>(state: &T, query: &str) -> sqlx::Result<Vec<Player>> {
     const QUERY: &str = const_str::concat!(
         "SELECT id, steam_id, steam_name, steam_avatar_url, country FROM `",
         TABLE_NAME,

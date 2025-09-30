@@ -18,6 +18,7 @@ pub async fn fetch_one_by_player_id<T: DatabaseState>(
         .await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_stats<T: DatabaseState>(
     state: &T,
     player_id: u64,

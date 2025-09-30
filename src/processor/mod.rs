@@ -10,11 +10,11 @@ use crate::{
 pub async fn reprocess_all(settings: &AppSettings) -> anyhow::Result<()> {
     info!("Starting historical data processing...");
 
-    let state = lifecycle::initialize_state(&settings).await?;
+    let state = lifecycle::initialize_state(settings).await?;
 
     let matches = matches::fetch_all_matches(&state).await?;
 
-    let _ = stats::reset_all_player_stats(&state).await?;
+    stats::reset_all_player_stats(&state).await?;
 
     for match_entry in matches {
         info!("Reprocessing match ID: {}", match_entry.id);

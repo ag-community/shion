@@ -26,8 +26,8 @@ async fn fetch_match(state: Data<State>, path: web::Path<u64>) -> ServiceRespons
 async fn create_match(state: Data<State>, body: Json<RequestBody>) -> ServiceResponse<Match> {
     let new_match = matches::create_match(
         &state,
-        body.server_ip.to_string(),
-        body.map_name.to_string(),
+        &body.server_ip,
+        &body.map_name,
     )
     .await?;
     Ok(Json(new_match))
