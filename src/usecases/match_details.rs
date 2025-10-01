@@ -3,6 +3,7 @@ use skillratings::{
     Outcomes,
     weng_lin::{WengLinConfig, WengLinRating, weng_lin_two_teams},
 };
+use std::{collections::HashSet, sync::LazyLock};
 
 use crate::{
     api::match_details::RequestBody,
@@ -12,11 +13,14 @@ use crate::{
     },
     entities::match_details::MatchDetail,
     repositories::{
-        match_details,
+        match_details, matches,
         players::{self},
         stats,
     },
 };
+
+static BLACKLISTED_MAPS: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| HashSet::from(["bootbox", "justwar2"]));
 
 pub struct PlayerRating {
     rating: WengLinRating,
@@ -89,6 +93,8 @@ pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> Servic
         return Ok(());
     }
 
+    let a_match = matches::fetch_match(state, match_id).await?;
+
     let player_ids: Vec<u64> = match_details
         .iter()
         .map(|detail| detail.player_id)
@@ -109,6 +115,36 @@ pub async fn process_match<T: DatabaseState>(state: &T, match_id: u64) -> Servic
                 detail: detail.clone(),
             });
         }
+    }
+
+    if BLACKLISTED_MAPS.contains(a_match.map_name.as_str()) {
+        info!(
+            "Match on blacklisted map '{}' (ID: {}), preserving original ratings.",
+            a_match.map_name, match_id
+        );
+
+        for detail in match_details.iter() {
+            let player_rating = player_ratings
+                .iter()
+                .find(|pr| pr.detail.player_id == detail.player_id)
+                .unwrap();
+
+            stats::update_stats(
+                state,
+                detail.player_id,
+                player_rating.rating.rating,
+                player_rating.rating.uncertainty,
+                0,
+                0,
+                0,
+                0,
+            )
+            .await?;
+
+            match_details::update_ratings(state, detail.id, player_rating.rating.rating, 0.0)
+                .await?;
+        }
+        return Ok(());
     }
 
     let (blue_team_players, red_team_players): (Vec<&PlayerRating>, Vec<&PlayerRating>) =
